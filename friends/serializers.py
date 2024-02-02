@@ -1,6 +1,7 @@
 from .models import *
 from rest_framework import serializers
 from django.db.models import Q
+
 class FriendRequestSerializer(serializers.ModelSerializer):
     """
     Serializer for creating friend request
@@ -8,16 +9,24 @@ class FriendRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = FriendRequest
         fields = ['request_to']
-
     def create(self, validated_data):
         request_from = self.context.get('request_from')
         request_to  =  validated_data.get('request_to')
         # Check if user has already send the request
         frnd_obj = FriendRequest.objects.filter(Q(request_from = request_from) & Q(request_to = request_to)& Q(status='accepted')| Q(status='pending'))
         if not frnd_obj.exists():
-            return  FriendRequest.objects.create(request_from = request_from, request_to = request_to)
-        return frnd_obj.last()
+            return  FriendRequest.objects.create(request_from = request_from, request_to=request_to, status='pending')
+        return frnd_obj.first()
     
+
+class FriendRequestSerializerGET(serializers.ModelSerializer):
+    """
+    Serializer for GET Pending request
+    """
+    id = serializers.PrimaryKeyRelatedField(queryset=FriendRequest.objects.all())
+    class Meta:
+        model = FriendRequest
+        fields = ['id']
 class FriendRequestUpdateSerializer(serializers.ModelSerializer):
     """ 
     Serializer for accepting and rejecting friend request 

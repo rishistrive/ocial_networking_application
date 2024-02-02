@@ -1,17 +1,19 @@
 from django.shortcuts import render
-from rest_framework import viewsets
-from rest_framework.viewsets import ModelViewSet
-from .serializers import * 
-from rest_framework.response import Response
+from rest_framework import generics, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
-from accounts.serializers import *
-from rest_framework import generics
-from .throtling import FriendRequestThrottleRate
+from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+
+from accounts.serializers import *
+
+from .serializers import *
+from .throtling import FriendRequestThrottleRate
+
 # Create your views here.
 
-class FriendRequestViewSet(ModelViewSet):
+class FriendRequestViewSet(generics.ListCreateAPIView):
     """
     GET : list out all the pending request
     POST : send friend request 
@@ -19,9 +21,8 @@ class FriendRequestViewSet(ModelViewSet):
     queryset = FriendRequest.objects.all()
     serializer_class = FriendRequestSerializer
     permission_classes = [IsAuthenticated]
-    # throttle_classes = [FriendRequestRateThrottle]
+    throttle_classes = [FriendRequestThrottleRate]
     pagination_class = PageNumberPagination
-    http_method_names = ['post', 'get']
     
     def get_queryset(self):
         return self.queryset.filter(request_to=self.request.user, status='pending')
@@ -30,7 +31,21 @@ class FriendRequestViewSet(ModelViewSet):
         context = super().get_serializer_context()
         context['request_from'] = self.request.user
         return context
-
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response({"message: request sent "}, status=status.HTTP_201_CREATED, headers=headers)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return FriendRequestSerializerGET
+        else:
+            return self.serializer_class
+    
+    
 
 class ListFriends(generics.ListAPIView):
     """
@@ -56,4 +71,6 @@ class UpdateFriendRequestStatus(APIView):
         serializer = self.serializer_class(data={'id': pk, 'status': status})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        if status == 'rejected':
+            return Response(data={"message": f"Friend request {status}"})
         return Response(data={"message": f"Friend request {status}"})

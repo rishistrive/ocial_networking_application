@@ -25,7 +25,7 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = []
 
     friends = models.ManyToManyField("self")
-
+    # by defualt value of symmetrical is True in Recursive relationship
     def __str__(self):
         return self.email
     
