@@ -10,7 +10,8 @@ sqlite3
 
 ## Run project by the following commands ##
 ```
-docker-compose up --build
+sudo docker-compose build
+docker-compose up
 ``` 
 
 ## Postman collection ##
